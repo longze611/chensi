@@ -117,3 +117,7 @@ This repository includes `.env.example` as a safe template for local setup.
 ## License
 
 No license has been selected yet. Add one before publishing if you want to define how others may use this project.
+
+## page
+<img width="1728" height="997" alt="image" src="https://github.com/user-attachments/assets/58d79c67-9fce-4b2c-8e2f-a024257ff834" />
+
