@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AiSetting {
+  id        String   @id @default(cuid())
+  userId    String   @unique @default("local-user")
+  provider  String
+  model     String
+  apiKey    String   @db.Text
+  baseUrl   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider])
+}
+
+model Idea {
+  id             String   @id @default(cuid())
+  userId         String   @default("local-user")
+  rawInput       String   @db.Text
+  refinedIdea    String   @db.Text
+  title          String
+  briefSummary   String   @db.Text
+  domain         String
+  tags           Json
+  currentPhase   String   @default("process_clarification")
+  maturityLevel  String   @default("seed")
+  iterationCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  documents   IdeaDocument[]
+  rounds      IterationRound[]
+  revisions   DocumentRevision[]
+  questions   QuestionItem[]
+  suggestions SuggestionItem[]
+  problems    ProblemItem[]
+
+  @@index([userId])
+  @@index([updatedAt])
+}
+
+model IdeaDocument {
+  id              String   @id @default(cuid())
+  ideaId          String
+  type            String
+  title           String
+  contentMarkdown String   @db.LongText
+  contentJson     Json?
+  version         Int      @default(1)
+  lastUpdatedBy   String   @default("agent")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  idea      Idea               @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  revisions DocumentRevision[]
+
+  @@index([ideaId])
+  @@unique([ideaId, type])
+}
+
+model IterationRound {
+  id            String    @id @default(cuid())
+  ideaId        String
+  roundNumber   Int
+  phase         String
+  status        String    @default("open")
+  agentFocus    String?   @db.Text
+  summaryBefore String?   @db.Text
+  summaryAfter  String?   @db.Text
+  createdAt     DateTime  @default(now())
+  submittedAt   DateTime?
+  processedAt   DateTime?
+
+  idea        Idea             @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  questions   QuestionItem[]
+  suggestions SuggestionItem[]
+
+  @@index([ideaId])
+  @@unique([ideaId, roundNumber])
+}
+
+model QuestionItem {
+  id                  String   @id @default(cuid())
+  roundId             String
+  ideaId              String
+  stage               String
+  relatedSection      String?  @db.Text
+  relatedTaskOrModule String?  @db.Text
+  question            String   @db.Text
+  explanation         String   @db.Text
+  whyItMatters        String   @db.Text
+  priority            String
+  answer              String?  @db.Text
+  status              String   @default("pending")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  idea  Idea           @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  round IterationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId])
+  @@index([roundId])
+}
+
+model SuggestionItem {
+  id                String   @id @default(cuid())
+  roundId           String
+  ideaId            String
+  relatedQuestionId String?
+  relatedSection    String?  @db.Text
+  suggestion        String   @db.Text
+  rationale         String   @db.Text
+  expectedImpact    String   @db.Text
+  possibleRisk      String?  @db.Text
+  adoptionText      String?  @db.Text
+  type              String   @default("content")
+  status            String   @default("pending")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  idea  Idea           @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  round IterationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId])
+  @@index([roundId])
+  @@index([relatedQuestionId])
+}
+
+model ProblemItem {
+  id            String   @id @default(cuid())
+  ideaId        String
+  roundId       String?
+  content       String   @db.Text
+  priority      String   @default("medium")
+  difficulty    Int      @default(3)
+  isResolved    Boolean  @default(false)
+  source        String   @default("user")
+  mergeKey      String?  @db.Text
+  decomposition Json?
+  orderIndex    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId])
+  @@index([priority])
+  @@index([isResolved])
+  @@index([orderIndex])
+}
+
+model DocumentRevision {
+  id            String   @id @default(cuid())
+  ideaId        String
+  documentId    String
+  roundId       String
+  versionBefore Int
+  versionAfter  Int
+  changeSummary String   @db.Text
+  diff          String?  @db.LongText
+  createdAt     DateTime @default(now())
+
+  idea     Idea         @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  document IdeaDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId])
+  @@index([documentId])
+  @@index([roundId])
+}
